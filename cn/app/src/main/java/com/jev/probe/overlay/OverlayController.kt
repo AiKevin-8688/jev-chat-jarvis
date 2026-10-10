@@ -23,6 +23,8 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import com.jev.probe.core.Analysis
+import com.jev.probe.core.Choice
+import com.jev.probe.core.Score
 import com.jev.probe.core.Prefs
 import com.jev.probe.core.RankedReply
 import kotlin.math.abs
