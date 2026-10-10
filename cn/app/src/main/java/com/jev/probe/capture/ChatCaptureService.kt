@@ -371,12 +371,13 @@ open class ChatCaptureService : AccessibilityService() {
         val snapshot = rawSnapshot
         if (!prefs.isAllowed(snapshot.title)) { leaveConversation(); overlay?.hide(); return }
 
-        // 优先进行知鸟全真题库匹配
+        // 优先进行知鸟全真题库匹配（离线0延迟，无需网络与梯子）
         val allText = (snapshot.title ?: "") + " " + snapshot.messages.joinToString(" ") { it.text }
         val matchResult = ExamMatcher.match(allText)
         if (matchResult != null) {
             val (q, matchScore) = matchResult
             Log.i(TAG, "ocr match zhiniao bank! q.id= score=")
+            cancelInFlight()
             overlay?.showExamAnswer(q.title, q.answer, q.options, matchScore)
             return
         }
@@ -792,12 +793,13 @@ open class ChatCaptureService : AccessibilityService() {
         }
         if (!prefs.isAllowed(snapshot.title)) { leaveConversation(); overlay?.hide(); return }
 
-        // 优先进行知鸟全真题库匹配
+        // 优先进行知鸟全真题库匹配（离线0延迟，无需网络与梯子）
         val allText = (snapshot.title ?: "") + " " + snapshot.messages.joinToString(" ") { it.text }
         val matchResult = ExamMatcher.match(allText)
         if (matchResult != null) {
             val (q, matchScore) = matchResult
             Log.i(TAG, "ocr match zhiniao bank! q.id= score=")
+            cancelInFlight()
             overlay?.showExamAnswer(q.title, q.answer, q.options, matchScore)
             return
         }
