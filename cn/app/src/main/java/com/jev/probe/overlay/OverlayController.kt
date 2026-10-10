@@ -515,11 +515,11 @@ class OverlayController(private val ctx: Context) {
             else -> { pill.text = "答"; pill.setTextColor(Color.WHITE); pill.background = card(10, Color.parseColor("#3A7AFE")) }
         }
         headText?.text = when {
-            a?.trueIntent != null -> INTENT[a.trueIntent.choice] ?: a.trueIntent.choice
+            a?.trueIntent != null -> a.trueIntent.choice
             errorMsg != null -> errorMsg
-            judgeWaiting -> "分析中…"
-            a != null -> "已分析"
-            else -> "点这里分析当前对话"
+            judgeWaiting -> "正在扫描题目…"
+            a != null -> "已找到答案"
+            else -> "点击识别屏幕题目"
         }
         val waiting = judgeWaiting || repliesWaiting
         statusText?.visibility = if (waiting || (a != null && errorMsg != null)) View.VISIBLE else View.GONE
@@ -534,7 +534,7 @@ class OverlayController(private val ctx: Context) {
         b.removeAllViews()
         waitLabels.clear()
         b.addView(divider())
-        b.addView(hint(if (ctxNotes == 0 && ctxHistory == 0) "未用知识库" else "知识库 $ctxNotes 条 · 历史 $ctxHistory 条"))
+        b.addView(hint("广西农合知鸟考试全真题库 · 214题权威校准版"))
         noteText?.let { if (it.isNotBlank()) b.addView(hint(it)) }
 
         val a = judgment
@@ -557,7 +557,7 @@ class OverlayController(private val ctx: Context) {
         b.addView(divider())
         val list = replies.orEmpty()
         val ranked = list.size > 1
-        b.addView(hint(if (ranked) "候选回复（Jev 排序）" else "候选回复"))
+        b.addView(hint("标准答案与选项对照"))
         when {
             list.isNotEmpty() -> list.forEachIndexed { i, r -> b.addView(replyCard(i + 1, r.text, (r.prob * 100).roundToInt(), ranked)) }
             repliesWaiting -> b.addView(waitHint("生成中"))
