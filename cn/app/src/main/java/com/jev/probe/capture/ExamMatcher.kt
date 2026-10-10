@@ -1,6 +1,7 @@
 package com.jev.probe.capture
 
 import android.content.Context
+import android.util.Log
 import org.json.JSONArray
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -14,6 +15,7 @@ data class ExamQuestion(
 )
 
 object ExamMatcher {
+    private const val TAG = "ExamMatcher"
     private var questions: List<ExamQuestion> = emptyList()
 
     fun init(ctx: Context) {
@@ -42,20 +44,20 @@ object ExamMatcher {
                     list.add(ExamQuestion(id, title, status, answers, opts))
                 }
                 questions = list
+                Log.i(TAG, "Loaded ${questions.size} exam questions from zhiniao-bank.json")
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Failed to load exam bank", e)
         }
     }
 
     /**
-     * 针对屏幕识别出的全部文字行进行题库匹配
-     * 返回匹配度最高的一道题及得分 (0~100)
+     * 针对屏幕文本进行模糊与子串匹配
      */
     fun match(screenText: String): Pair<ExamQuestion, Int>? {
         if (questions.isEmpty() || screenText.isBlank()) return null
         val cleanScreen = screenText.replace(Regex("""[^\w\u4e00-\u9fa5]"""), "")
-        if (cleanScreen.length < 4) return null
+        if (cleanScreen.length < 3) return null
 
         var bestQ: ExamQuestion? = null
         var bestScore = 0
@@ -64,14 +66,14 @@ object ExamMatcher {
             val cleanTitle = q.title.replace(Regex("""[^\w\u4e00-\u9fa5]"""), "")
             if (cleanTitle.isEmpty()) continue
 
-            // 1. 题干前10~15个汉字直接完全包含
-            val headLen = minOf(12, cleanTitle.length)
+            // 1. 完全包含题干前8-12字
+            val headLen = minOf(10, cleanTitle.length)
             val head = cleanTitle.substring(0, headLen)
             if (cleanScreen.contains(head)) {
                 return Pair(q, 100)
             }
 
-            // 2. 连续子串重合度评分
+            // 2. 连续3字切片重合度评分
             var hits = 0
             val step = 3
             var total = 0
@@ -89,6 +91,6 @@ object ExamMatcher {
             }
         }
 
-        return if (bestScore >= 45 && bestQ != null) Pair(bestQ, bestScore) else null
+        return if (bestScore >= 40 && bestQ != null) Pair(bestQ, bestScore) else null
     }
 }
