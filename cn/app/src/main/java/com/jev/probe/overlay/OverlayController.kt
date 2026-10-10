@@ -386,35 +386,36 @@ class OverlayController(private val ctx: Context) {
         if (!ensureWindow()) return
         setMode(Mode.CARD)
         val ansStr = if (answer.isNotEmpty()) answer.joinToString("；") else "无标答"
-        val displayTitle = if (title.length > 22) title.substring(0, 20) + "…" else title
+        val displayTitle = if (title.length > 20) title.substring(0, 18) + "…" else title
         errorMsg = null
-        judgment = null
         repliesWaiting = false
         judgeWaiting = false
         stopTicker()
-        
-        // 伪装为一个高置信度推荐卡片
+
+        val emptyProbs = emptyMap<String, Double>()
         val fakeAnalysis = Analysis(
-            dangerLevel = Score(0.0, 5, 1.0),
-            sheNeeds = Choice("标答", 1.0),
-            trueIntent = Choice("★ 标答: ", 1.0),
-            bestAction = Choice("题干: ", 1.0),
-            rationale = "知鸟题库匹配度 % · 214题权威校准库",
+            trueIntent = Choice("★ 标答: ", 1.0, emptyProbs),
+            dangerLevel = Score(0.0, 1.0, 5),
+            sheNeeds = Choice("题干: ", 1.0, emptyProbs),
             shouldReplyNow = 1.0,
-            tensionResolved = 1.0
+            bestAction = Choice("知鸟题库匹配度 %", 1.0, emptyProbs),
+            tensionResolved = 1.0,
+            literalQuestion = 1.0,
+            rankedReplies = emptyList(),
+            latencyMs = 0L,
+            error = null
         )
         judgment = fakeAnalysis
-        
-        // 把每一个选项或标答展示在候选区
+
         val repliesList = ArrayList<RankedReply>()
-        repliesList.add(RankedReply("★ 标答: ", "权威核准标准答案", emptyList()))
+        repliesList.add(RankedReply("★ 标答: ", 1.0))
         options.forEach { opt ->
             val isAns = answer.contains(opt)
             val prefix = if (isAns) "✓ [标答] " else "  "
-            repliesList.add(RankedReply(prefix + opt, if (isAns) "正确选项" else "候选选项", emptyList()))
+            repliesList.add(RankedReply(prefix + opt, if (isAns) 0.99 else 0.1))
         }
         replies = repliesList
-        
+
         render()
         flashIfCollapsed()
     }
