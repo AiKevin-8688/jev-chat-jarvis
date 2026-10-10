@@ -93,6 +93,11 @@ class OverlayController(private val ctx: Context) {
     private var ctxNotes = 0
     private var ctxHistory = 0
     private var noteText: String? = null
+    var isExamMode = false
+    private var examAnsTitle = ""
+    private var examOptions = emptyList<String>()
+    private var examAnswer = emptyList<String>()
+    private var examScore = 0
 
     /** Text views showing an elapsed-seconds counter; the ticker updates them in place. */
     private val waitLabels = ArrayList<Pair<TextView, String>>()
@@ -180,13 +185,14 @@ class OverlayController(private val ctx: Context) {
 
     private fun buildBubble(): View {
         val b = TextView(ctx).apply {
-            text = "Jev"; setTextColor(Color.WHITE); gravity = Gravity.CENTER; textSize = 13f
+            text = "答"; setTextColor(Color.WHITE); gravity = Gravity.CENTER; textSize = 13f
             setTypeface(typeface, Typeface.BOLD)
             alpha = 0.7f
             background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.argb(235, 58, 122, 254)) }
             layoutParams = FrameLayout.LayoutParams(dp(52), dp(52))
         }
-        attachDrag(b, widthPx = { dp(52) }, onTap = { showMenu(dp(56)) }) { x, y -> prefs.bubbleX = x; prefs.bubbleY = y }
+        attachDrag(b, widthPx = { dp(52) }, onTap = { onOcrCapture?.invoke() }) { x, y -> prefs.bubbleX = x; prefs.bubbleY = y }
+        b.setOnLongClickListener { showMenu(dp(56)); true }
         return b
     }
 
@@ -395,6 +401,11 @@ class OverlayController(private val ctx: Context) {
         stopTicker()
 
         val emptyProbs = emptyMap<String, Double>()
+        isExamMode = true
+        examAnsTitle = title
+        examOptions = options
+        examAnswer = answer
+        examScore = score
         val fakeAnalysis = Analysis(
             trueIntent = Choice("★ 标答: ", 1.0, emptyProbs),
             dangerLevel = Score(0.0, 1.0, 5),
@@ -546,10 +557,11 @@ class OverlayController(private val ctx: Context) {
             a.sheNeeds?.let { bits.add("要${NEEDS[it.choice] ?: it.choice}") }
             a.bestAction?.let { bits.add(ACTION[it.choice] ?: it.choice) }
             a.shouldReplyNow?.let { bits.add(if (it >= 0.5) "可给实质" else "先别给实质") }
-            if (bits.isNotEmpty()) b.addView(line(bits.joinToString("  ·  "), "#374151", 13f))
-            a.tensionResolved?.let { if (it >= 0.7) b.addView(line("✓ 紧张已缓解", "#16A34A", 12f)) }
-        } else if (judgeWaiting) {
-            b.addView(waitHint("分析中"))
+                if (bits.isNotEmpty()) b.addView(line(bits.joinToString("  ·  "), "#374151", 13f))
+                a.tensionResolved?.let { if (it >= 0.7) b.addView(line("✓ 紧张已缓解", "#16A34A", 12f)) }
+            } else if (judgeWaiting) {
+                b.addView(waitHint("分析中"))
+            }
         }
         errorMsg?.let { if (a != null) b.addView(line("这一轮更新失败：$it", "#DC2626", 12f)) }
 
