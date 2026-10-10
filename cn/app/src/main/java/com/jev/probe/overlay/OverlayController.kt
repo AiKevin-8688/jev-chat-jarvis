@@ -93,11 +93,6 @@ class OverlayController(private val ctx: Context) {
     private var ctxNotes = 0
     private var ctxHistory = 0
     private var noteText: String? = null
-    var isExamMode = false
-    private var examAnsTitle = ""
-    private var examOptions = emptyList<String>()
-    private var examAnswer = emptyList<String>()
-    private var examScore = 0
 
     /** Text views showing an elapsed-seconds counter; the ticker updates them in place. */
     private val waitLabels = ArrayList<Pair<TextView, String>>()
@@ -191,8 +186,7 @@ class OverlayController(private val ctx: Context) {
             background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.argb(235, 58, 122, 254)) }
             layoutParams = FrameLayout.LayoutParams(dp(52), dp(52))
         }
-        attachDrag(b, widthPx = { dp(52) }, onTap = { onOcrCapture?.invoke() }) { x, y -> prefs.bubbleX = x; prefs.bubbleY = y }
-        b.setOnLongClickListener { showMenu(dp(56)); true }
+        attachDrag(b, widthPx = { dp(52) }, onTap = { onOcrCapture?.invoke() }) { x, y -> prefs.bubbleX = x; prefs.bubbleY = y }; b.setOnLongClickListener { showMenu(dp(56)); true }
         return b
     }
 
@@ -393,7 +387,7 @@ class OverlayController(private val ctx: Context) {
     fun showExamAnswer(title: String, answer: List<String>, options: List<String>, score: Int) {
         if (!ensureWindow()) return
         setMode(Mode.CARD)
-        val ansStr = if (answer.isNotEmpty()) answer.joinToString("；") else "无标答"
+        val ansStr = if (answer.isNotEmpty()) answer.joinToString("、") else "暂无"
         val displayTitle = if (title.length > 20) title.substring(0, 18) + "…" else title
         errorMsg = null
         repliesWaiting = false
@@ -401,17 +395,12 @@ class OverlayController(private val ctx: Context) {
         stopTicker()
 
         val emptyProbs = emptyMap<String, Double>()
-        isExamMode = true
-        examAnsTitle = title
-        examOptions = options
-        examAnswer = answer
-        examScore = score
         val fakeAnalysis = Analysis(
-            trueIntent = Choice("★ 标答: ", 1.0, emptyProbs),
+            trueIntent = Choice("★ 标答: " + ansStr, 1.0, emptyProbs),
             dangerLevel = Score(0.0, 1.0, 5),
-            sheNeeds = Choice("题干: ", 1.0, emptyProbs),
+            sheNeeds = Choice("题干: " + displayTitle, 1.0, emptyProbs),
             shouldReplyNow = 1.0,
-            bestAction = Choice("知鸟题库匹配度 %", 1.0, emptyProbs),
+            bestAction = Choice("匹配度 " + score + "%", 1.0, emptyProbs),
             tensionResolved = 1.0,
             literalQuestion = 1.0,
             rankedReplies = emptyList(),
@@ -421,7 +410,7 @@ class OverlayController(private val ctx: Context) {
         judgment = fakeAnalysis
 
         val repliesList = ArrayList<RankedReply>()
-        repliesList.add(RankedReply("★ 标答: ", 1.0))
+        repliesList.add(RankedReply("★ 标答: " + ansStr, 1.0))
         options.forEach { opt ->
             val isAns = answer.contains(opt)
             val prefix = if (isAns) "✓ [标答] " else "  "
@@ -429,6 +418,7 @@ class OverlayController(private val ctx: Context) {
         }
         replies = repliesList
 
+        setExpanded(true)
         render()
         flashIfCollapsed()
     }
@@ -522,7 +512,7 @@ class OverlayController(private val ctx: Context) {
                 pill.setTextColor(Color.WHITE); pill.background = card(10, dangerColor(lvl))
             }
             errorMsg != null -> { pill.text = "出错"; pill.setTextColor(Color.WHITE); pill.background = card(10, Color.parseColor("#DC2626")) }
-            else -> { pill.text = "Jev"; pill.setTextColor(Color.WHITE); pill.background = card(10, Color.parseColor("#3A7AFE")) }
+            else -> { pill.text = "答"; pill.setTextColor(Color.WHITE); pill.background = card(10, Color.parseColor("#3A7AFE")) }
         }
         headText?.text = when {
             a?.trueIntent != null -> INTENT[a.trueIntent.choice] ?: a.trueIntent.choice
@@ -557,11 +547,10 @@ class OverlayController(private val ctx: Context) {
             a.sheNeeds?.let { bits.add("要${NEEDS[it.choice] ?: it.choice}") }
             a.bestAction?.let { bits.add(ACTION[it.choice] ?: it.choice) }
             a.shouldReplyNow?.let { bits.add(if (it >= 0.5) "可给实质" else "先别给实质") }
-                if (bits.isNotEmpty()) b.addView(line(bits.joinToString("  ·  "), "#374151", 13f))
-                a.tensionResolved?.let { if (it >= 0.7) b.addView(line("✓ 紧张已缓解", "#16A34A", 12f)) }
-            } else if (judgeWaiting) {
-                b.addView(waitHint("分析中"))
-            }
+            if (bits.isNotEmpty()) b.addView(line(bits.joinToString("  ·  "), "#374151", 13f))
+            a.tensionResolved?.let { if (it >= 0.7) b.addView(line("✓ 紧张已缓解", "#16A34A", 12f)) }
+        } else if (judgeWaiting) {
+            b.addView(waitHint("分析中"))
         }
         errorMsg?.let { if (a != null) b.addView(line("这一轮更新失败：$it", "#DC2626", 12f)) }
 
