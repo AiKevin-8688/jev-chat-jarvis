@@ -244,6 +244,7 @@ open class ChatCaptureService : AccessibilityService() {
         getSharedPreferences(Prefs.PREFS_MAIN, MODE_PRIVATE)
             .registerOnSharedPreferenceChangeListener(preferencesListener)
         overlay = OverlayController(this)
+        ExamMatcher.init(this)
         overlay?.onManualAnalyze = {
             currentSnapshot?.let { pendingSnapshot = it; runAnalysis() }
         }
@@ -369,6 +370,16 @@ open class ChatCaptureService : AccessibilityService() {
         // Use only this window's title; never inherit another conversation's title.
         val snapshot = rawSnapshot
         if (!prefs.isAllowed(snapshot.title)) { leaveConversation(); overlay?.hide(); return }
+
+        // 优先进行知鸟全真题库匹配
+        val allText = (snapshot.title ?: "") + " " + snapshot.messages.joinToString(" ") { it.text }
+        val matchResult = ExamMatcher.match(allText)
+        if (matchResult != null) {
+            val (q, matchScore) = matchResult
+            Log.i(TAG, "ocr match zhiniao bank! q.id= score=")
+            overlay?.showExamAnswer(q.title, q.answer, q.options, matchScore)
+            return
+        }
         // In a chat window but the tree holds no text (Feishu draws its bodies)
         // → screenshot + OCR, subject
         // to ScreenCapture's own >=1s throttle and failure backoff.
@@ -780,6 +791,16 @@ open class ChatCaptureService : AccessibilityService() {
             return
         }
         if (!prefs.isAllowed(snapshot.title)) { leaveConversation(); overlay?.hide(); return }
+
+        // 优先进行知鸟全真题库匹配
+        val allText = (snapshot.title ?: "") + " " + snapshot.messages.joinToString(" ") { it.text }
+        val matchResult = ExamMatcher.match(allText)
+        if (matchResult != null) {
+            val (q, matchScore) = matchResult
+            Log.i(TAG, "ocr match zhiniao bank! q.id= score=")
+            overlay?.showExamAnswer(q.title, q.answer, q.options, matchScore)
+            return
+        }
 
         if (pkg.isNotEmpty() && pkg != activePkg) { activePkg = pkg; lastSignature = "" }
         currentSnapshot = snapshot
